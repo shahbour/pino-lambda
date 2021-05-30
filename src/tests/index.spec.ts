@@ -1,6 +1,7 @@
 import tap from 'tap';
 import sinon from 'sinon';
 import pino, { PinoLambdaLogger, ExtendedPinoOptions } from '../index';
+import { DestinationStream } from 'pino';
 
 sinon.useFakeTimers(Date.UTC(2016, 11, 1, 6, 0, 0, 0));
 
@@ -113,6 +114,24 @@ tap.test('should work even if host header missing', (t) => {
   t.end();
 });
 
+tap.test('should only log info message', (t) => {
+  const [log, output] = createLogger();
+  log.withRequest({}, { awsRequestId: '431234' });
+  log.debug('logging a debug message');
+  log.info('logging an info message');
+  t.matchSnapshot(output.buffer);
+  t.end();
+});
+
+tap.test('should log debug and info message', (t) => {
+  const [log, output] = createLogger();
+  log.withRequest({ headers: { 'x-correlation-debug': 'true' } }, { awsRequestId: '431234' });
+  log.debug('logging a debug message');
+  log.info('logging a info message');
+  t.matchSnapshot(output.buffer);
+  t.end();
+});
+
 /**
  * Creates a test logger and output buffer for assertions
  * Returns the logger and the buffer
@@ -122,14 +141,17 @@ function createLogger(options?: ExtendedPinoOptions): [PinoLambdaLogger, { buffe
     buffer: 'undefined',
   };
 
-  const logger = pino({
-    ...options,
-    streamWriter: (str: string | Uint8Array): boolean => {
-      output.buffer = (str as string).trim();
-      return true;
+  const logger = pino(
+    {
+      ...options,
+      base: null,
     },
-    base: null,
-  });
+    {
+      write(buffer: string) {
+        output.buffer = buffer.trim();
+      },
+    },
+  );
 
   return [logger, output];
 }

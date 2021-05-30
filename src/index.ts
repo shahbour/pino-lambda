@@ -24,7 +24,6 @@ interface LamdbaEvent {
 }
 
 interface PinoLambdaExtensionOptions {
-  levels: LevelMapping;
   options: ExtendedPinoOptions;
 }
 
@@ -34,47 +33,6 @@ const CORRELATION_ID = `${CORRELATION_HEADER}id`;
 const CORRELATION_TRACE_ID = `${CORRELATION_HEADER}trace-id`;
 const CORRELATION_DEBUG = `${CORRELATION_HEADER}debug`;
 
-const formatLevel = (level: string | number, levels: LevelMapping): string => {
-  if (typeof level === 'string') {
-    return level.toLocaleUpperCase();
-  } else if (typeof level === 'number') {
-    return levels.labels[level]?.toLocaleUpperCase();
-  }
-  return level;
-};
-
-/**
- * Custom destination stream for Pino
- * @param options Pino options
- * @param storageProvider Global storage provider for request values
- */
-const pinolambda = ({ levels, options }: PinoLambdaExtensionOptions): DestinationStream => ({
-  write(buffer: string) {
-    let output = buffer;
-    if (!options.prettyPrint) {
-      /**
-       * Writes to stdout using the same method that AWS lambda uses
-       * under the hood for console.log
-       * This preserves the default log format of cloudwatch
-       */
-      const { level, msg } = JSON.parse(buffer);
-      const storageProvider = options.storageProvider || GlobalContextStorageProvider;
-      const { awsRequestId } = storageProvider.getContext() || {};
-      const time = new Date().toISOString();
-      const levelTag = formatLevel(level, levels);
-
-      output = `${time}${awsRequestId ? `\t${awsRequestId}` : ''}\t${levelTag}\t${msg}\t${buffer}`;
-      output = output.replace(/\n/, '\r');
-      output += '\n';
-    }
-
-    if (options.streamWriter) {
-      return options.streamWriter(output);
-    }
-    return process.stdout.write(output);
-  },
-});
-
 export type PinoLambdaLogger = Logger & {
   withRequest: (event: LamdbaEvent, context: LambdaContext) => void;
 };
@@ -83,8 +41,12 @@ export type PinoLambdaLogger = Logger & {
  * Exports a default constructor with an extended instance of Pino
  * that provides convinience methods for use with AWS Lambda
  */
-export default (extendedPinoOptions?: ExtendedPinoOptions): PinoLambdaLogger => {
+export default (
+  extendedPinoOptions?: ExtendedPinoOptions,
+  destinationStream?: DestinationStream,
+): PinoLambdaLogger => {
   const options = extendedPinoOptions ?? {};
+  const stream = destinationStream ?? process.stdout;
   const storageProvider = extendedPinoOptions?.storageProvider || GlobalContextStorageProvider;
 
   // attach request values to logs
@@ -101,11 +63,7 @@ export default (extendedPinoOptions?: ExtendedPinoOptions): PinoLambdaLogger => 
   };
 
   // construct a pino logger and set its destination
-  const logger = pino(
-    pinoOptions,
-    pinolambda({ options: pinoOptions, levels: pino.levels }),
-  ) as unknown as PinoLambdaLogger;
-
+  const logger = (pino(pinoOptions, stream) as unknown) as PinoLambdaLogger;
   // keep a reference to the original logger level
   const configuredLevel = logger.level;
 
