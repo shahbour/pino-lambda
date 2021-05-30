@@ -115,19 +115,17 @@ tap.test('should work even if host header missing', (t) => {
 });
 
 tap.test('should only log info message', (t) => {
-  const [log, output] = createLogger();
+  const [log, output] = createLogger({ level: 'info' });
   log.withRequest({}, { awsRequestId: '431234' });
   log.debug('logging a debug message');
-  log.info('logging an info message');
   t.matchSnapshot(output.buffer);
   t.end();
 });
 
 tap.test('should log debug and info message', (t) => {
-  const [log, output] = createLogger();
+  const [log, output] = createLogger({ level: 'info' });
   log.withRequest({ headers: { 'x-correlation-debug': 'true' } }, { awsRequestId: '431234' });
   log.debug('logging a debug message');
-  log.info('logging a info message');
   t.matchSnapshot(output.buffer);
   t.end();
 });

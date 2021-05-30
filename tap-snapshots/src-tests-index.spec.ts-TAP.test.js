@@ -42,11 +42,11 @@ exports[`src/tests/index.spec.ts TAP should log correlation headers > must match
 `
 
 exports[`src/tests/index.spec.ts TAP should log debug and info message > must match snapshot 1`] = `
-{"level":30,"time":1480572000000,"awsRequestId":"431234","x-correlation-debug":"true","x-correlation-trace-id":"undefined","x-correlation-id":"431234","msg":"logging a info message"}
+{"level":20,"time":1480572000000,"awsRequestId":"431234","x-correlation-debug":"true","x-correlation-trace-id":"undefined","x-correlation-id":"431234","msg":"logging a debug message"}
 `
 
 exports[`src/tests/index.spec.ts TAP should only log info message > must match snapshot 1`] = `
-{"level":30,"time":1480572000000,"awsRequestId":"431234","x-correlation-trace-id":"undefined","x-correlation-id":"431234","msg":"logging an info message"}
+undefined
 `
 
 exports[`src/tests/index.spec.ts TAP should preserve mixins > must match snapshot 1`] = `
